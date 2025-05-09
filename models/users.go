@@ -1,33 +1,42 @@
 package models
 
 import (
-	"errors"
+	"fmt"
+	"log"
+
+	"gorm.io/gorm"
+	"github.com/google/uuid"
 )
 
-type User struct {
-	ID       int64  `json:"id"`
-	Username string `json:"username"`
+
+type Users struct {
+	gorm.Model
+	GUID		string `gorm:"size:36;uniqueIndex"`
+	Token		Tokens `gorm:"foreignKey:UserID"`
 }
 
-func (u *User) Create() error {
-	if len(u.Username) < 3 {
-		return errors.New("username must be at least 3 characters")
+func MigrateUser(db *gorm.DB) {
+	err := db.AutoMigrate(&Users{})
+	if err != nil {
+		log.Fatalf("Failed to migrate database: %v", err)
+	}
+}
+
+func CreateUser(db *gorm.DB) {
+	id := uuid.New() 
+	str := id.String()
+
+	user := Users{
+		GUID:	str,
 	}
 
-	err := DB.QueryRow(
-		"INSERT INTO users(username) VALUES($1) RETURNING id",
-		u.Username,
-	).Scan(&u.ID)
-
-	return err
-}
-
-func GetUser(id int64) (*User, error) {
-	u := &User{}
-	err := DB.QueryRow(
-		"SELECT id, username FROM users WHERE id = $1",
-		id,
-	).Scan(&u.ID, &u.Username)
-	
-	return u, err
+	result := db.Create(&user)
+	if result.Error != nil {
+		log.Fatalf("Failed to create user: %v", result.Error)
+	}
+		fmt.Printf("Hello World!\nNew user created:\nID: %d\nGUID: %s\nRows affected: %d\n",
+		user.ID,
+		user.GUID,
+		result.RowsAffected,
+	)
 }
